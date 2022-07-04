@@ -18,10 +18,9 @@ class TodoListViewController: UITableViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        
         print(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Item.plist"))
         
-//        loadItems()
+        loadItems()
         
     }
     
@@ -46,11 +45,13 @@ class TodoListViewController: UITableViewController {
     //MARK: - TableViewDelegate
     
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        // print(itemArray[indexPath.row])
+        
+//        context.delete(itemArray[indexPath.row])
+//        itemArray.remove(at: indexPath.row)
         
         itemArray[indexPath.row].isDone = !itemArray[indexPath.row].isDone
         
-        self.saveItems()
+        saveItems()
         
         // cellForRowAt recall!
         tableView.reloadData()
@@ -99,15 +100,13 @@ class TodoListViewController: UITableViewController {
         
     }
     
-//    func loadItems() {
-//        if let data = try? Data(contentsOf: dataFilePath!) {
-//            let decoder = PropertyListDecoder()
-//            do {
-//                itemArray = try decoder.decode([Item].self, from: data)
-//            } catch {
-//                print("Error decoding item array, \(error.localizedDescription)")
-//            }
-//        }
-//    }
+    func loadItems() {
+        let request: NSFetchRequest<Item> = Item.fetchRequest()
+        do {
+            itemArray = try context.fetch(request)
+        } catch {
+            print("Error fetching data from context \(error.localizedDescription)")
+        }
+    }
 }
 
