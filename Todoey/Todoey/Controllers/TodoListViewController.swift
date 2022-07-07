@@ -7,14 +7,16 @@
 //
 
 import UIKit
-import CoreData
+//import CoreData
 import RealmSwift
+import ChameleonFramework
 
-class TodoListViewController: UITableViewController{
+class TodoListViewController: SwipeTableViewController {
     
     let realm = try! Realm()
     var todoItems: Results<Item>?
     //    var itemArray = [Item]()
+    @IBOutlet weak var searchBar: UISearchBar!
     
     var selectedCategory: Category? {
         didSet {
@@ -22,13 +24,44 @@ class TodoListViewController: UITableViewController{
         }
     }
     
-//    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
+    //    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        print(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Item.plist"))
+        tableView.separatorStyle = .none
         
+        //        print(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Item.plist"))
+        
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        
+        // Update nav bar UI
+        if let colorHex = selectedCategory?.bgColor {
+            
+            title = selectedCategory!.name
+            
+            guard let navBar = navigationController?.navigationBar else { fatalError("navigation controller does not exist.") }
+            let bgColor = UIColor(hexString: colorHex)!
+            let contrastOfBackgroundColor = ContrastColorOf(UIColor(hexString: colorHex)!, returnFlat: true)
+            let appearance = UINavigationBarAppearance()
+            appearance.backgroundColor = bgColor
+            appearance.titleTextAttributes = [.foregroundColor: contrastOfBackgroundColor]
+            appearance.largeTitleTextAttributes = [.foregroundColor: contrastOfBackgroundColor]
+            
+            navBar.tintColor = contrastOfBackgroundColor
+            navBar.standardAppearance = appearance
+            navBar.compactAppearance = appearance
+            navBar.scrollEdgeAppearance = appearance
+            
+            
+            //Search Bar
+            searchBar.barTintColor = bgColor
+            searchBar.searchTextField.backgroundColor = .white
+            
+        }
     }
     
     //MARK: - TableViewDataSource
@@ -38,9 +71,20 @@ class TodoListViewController: UITableViewController{
     }
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "TodoItemCell", for: indexPath)
+        let cell = super.tableView(tableView, cellForRowAt: indexPath)
         
         if let item = self.todoItems?[indexPath.row] {
+            
+            //currently on row #5
+            //there is a total of 10 items in todoItems
+            
+            if let color = UIColor(hexString: selectedCategory!.bgColor)?.darken(byPercentage: CGFloat(CGFloat(indexPath.row) / CGFloat(todoItems!.count+10))) {
+                cell.backgroundColor = color
+                cell.textLabel?.textColor = ContrastColorOf(color, returnFlat: true)
+            }
+            
+            
+            
             cell.textLabel?.text = item.title
             
             cell.accessoryType = item.isDone ? .checkmark : .none
@@ -58,7 +102,7 @@ class TodoListViewController: UITableViewController{
         if let item = todoItems?[indexPath.row] {
             do {
                 try realm.write {
-//                    realm.delete(item)
+                    //                    realm.delete(item)
                     item.isDone = !item.isDone
                 }
             } catch {
@@ -67,7 +111,7 @@ class TodoListViewController: UITableViewController{
             
         }
         
-//                  Using Core data
+        //                  Using Core data
         //        context.delete(itemArray[indexPath.row])
         //        itemArray.remove(at: indexPath.row)
         
@@ -133,16 +177,16 @@ class TodoListViewController: UITableViewController{
         present(alert, animated: true, completion: nil)
     }
     
-//      Using Core Data
-//    func saveItems(item: Item) {
-//
-//        do {
-//                        try context.save()
-//        } catch {
-//            print("Error saving context \(error.localizedDescription)")
-//        }
-//
-//    }
+    //      Using Core Data
+    //    func saveItems(item: Item) {
+    //
+    //        do {
+    //                        try context.save()
+    //        } catch {
+    //            print("Error saving context \(error.localizedDescription)")
+    //        }
+    //
+    //    }
     
     
     func loadItems() {
@@ -172,33 +216,46 @@ class TodoListViewController: UITableViewController{
     //    }
     
     
+    //MARK: - Delete Data from Swipe
+    override func updateModel(at indexPath: IndexPath) {
+        if let itemForDeletion = todoItems?[indexPath.row] {
+            do {
+                try realm.write {
+                    realm.delete(itemForDeletion)
+                }
+            } catch {
+                print("Error removing item. \(error.localizedDescription)")
+            }
+        }
+    }
+    
 }
 
 //MARK: - Search bar dekegate methods
 
 
 extension TodoListViewController: UISearchBarDelegate {
-
+    
     func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
         
         todoItems = todoItems?.filter("title CONTAINS[cd] %@", searchBar.text!).sorted(byKeyPath: "dateCreated", ascending: true)
         
         tableView.reloadData()
         
-//        Using Core data
-//        let request: NSFetchRequest<Item> = Item.fetchRequest()
-//
-//        let predicate = NSPredicate(format: "title CONTAINS[cd] %@", searchBar.text!)
-//
-//        request.sortDescriptors = [NSSortDescriptor(key: "title", ascending: true)]
-//
-//        loadItems(with: request, predicate: predicate)
+        //        Using Core data
+        //        let request: NSFetchRequest<Item> = Item.fetchRequest()
+        //
+        //        let predicate = NSPredicate(format: "title CONTAINS[cd] %@", searchBar.text!)
+        //
+        //        request.sortDescriptors = [NSSortDescriptor(key: "title", ascending: true)]
+        //
+        //        loadItems(with: request, predicate: predicate)
     }
-
+    
     func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
         if searchBar.text?.count == 0 {
             loadItems()
-
+            
             DispatchQueue.main.async {
                 searchBar.resignFirstResponder()
             }

@@ -7,10 +7,12 @@
 //
 
 import UIKit
-import CoreData
+//import CoreData
 import RealmSwift
+import ChameleonFramework
 
-class CategoryViewController: UITableViewController {
+
+class CategoryViewController: SwipeTableViewController {
     
     let realm = try! Realm()
     
@@ -22,6 +24,26 @@ class CategoryViewController: UITableViewController {
         super.viewDidLoad()
         
         loadCategory()
+        
+        tableView.separatorStyle = .none
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        
+        
+        guard let navBar = navigationController?.navigationBar else { fatalError("navigation controller does not exist.") }
+        let bgColor = UIColor(named: "mainColor")!
+        let contrastOfBackgroundColor = ContrastColorOf(bgColor, returnFlat: true)
+        let appearance = UINavigationBarAppearance()
+        appearance.backgroundColor = bgColor
+        appearance.titleTextAttributes = [.foregroundColor: contrastOfBackgroundColor]
+        appearance.largeTitleTextAttributes = [.foregroundColor: contrastOfBackgroundColor]
+        
+        navBar.tintColor = contrastOfBackgroundColor
+        navBar.standardAppearance = appearance
+        navBar.compactAppearance = appearance
+        navBar.scrollEdgeAppearance = appearance
     }
     
     //MARK: - TableView Datasource Method
@@ -31,10 +53,16 @@ class CategoryViewController: UITableViewController {
     }
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "CategoryCell", for: indexPath)
+        let cell = super.tableView(tableView, cellForRowAt: indexPath)
         
         cell.textLabel?.text = categoryArray?[indexPath.row].name ?? "No Category Added Yet"
         
+        guard let categoryColor = categoryArray?[indexPath.row].bgColor else { fatalError()}
+        
+        cell.textLabel?.textColor = ContrastColorOf(UIColor(hexString: categoryColor)!, returnFlat: true)
+        
+        cell.backgroundColor = UIColor(hexString: categoryArray?[indexPath.row].bgColor ?? "#000000")
+
         return cell
     }
     
@@ -56,6 +84,20 @@ class CategoryViewController: UITableViewController {
         categoryArray = realm.objects(Category.self)
         
         tableView.reloadData()
+    }
+    
+    //MARK: - Delete Data from Swipe
+    
+    override func updateModel(at indexPath: IndexPath) {
+        if let categoryForDeletion = self.categoryArray?[indexPath.row] {
+            do {
+                try self.realm.write {
+                    self.realm.delete(categoryForDeletion)
+                }
+            } catch {
+                print("Error removing category. \(error.localizedDescription)")
+            }
+        }
     }
     
 //    //Using Core Data
@@ -81,6 +123,7 @@ class CategoryViewController: UITableViewController {
                 
                 let newCategory = Category()
                 newCategory.name = name
+                newCategory.bgColor = UIColor.randomFlat().hexValue()
                 
                 self.save(category: newCategory)
                 
@@ -100,6 +143,7 @@ class CategoryViewController: UITableViewController {
     
     //MARK: - TableView Delegate Mehthod
     
+    
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         performSegue(withIdentifier: "goToItems", sender: self)
     }
@@ -112,17 +156,5 @@ class CategoryViewController: UITableViewController {
         }
     }
     
-    override func tableView(_ tableView: UITableView, canEditRowAt indexPath: IndexPath) -> Bool {
-        return true
-    }
-
-    override func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
-        if (editingStyle == .delete) {
-//            context.delete(categoryArray[indexPath.row])
-//            categoryArray.remove(at: indexPath.row)
-            
-//            saveCategory()
-        }
-    }
-    
 }
+
